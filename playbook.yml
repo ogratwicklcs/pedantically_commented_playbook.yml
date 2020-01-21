@@ -1,0 +1,396 @@
+---
+# ^^^ YAML documents must begin with the document separator "---"
+#
+#### Example docblock, I like to put a descriptive comment at the top of my 
+#### playbooks.
+#
+# Overview: Playbook to bootstrap a new host for configuration management.
+# Applies to: production
+# Description: 
+#   Ensures that a host is configured for management with Ansible.
+# 
+###########
+#
+#
+# Note:
+# YAML, like Python, cares about whitespace.  Indent consistently throughout.
+# Be aware! Unlike Python, YAML refuses to allow the tab character for
+# indentation, so always use spaces.
+#
+# Two-space indents feel comfortable to me, but do whatever you like.
+# vim:ff=unix ts=2 sw=2 ai expandtab
+#
+# If you're new to YAML, keep in mind that YAML documents, like XML
+# documents, represent a tree-like structure of nodes and text. More
+# familiar with JSON?  Think of YAML as a strict and more flexible JSON
+# with fewer significant characters (e.g., :, "", {}, [])
+#
+# The curious may read more about YAML at:
+# http://www.yaml.org/spec/1.2/spec.html
+#
+
+
+### 
+# Notice the minus on the line below -- this starts the playbook's record
+# in the YAML document. Only one playbook is allowed per YAML file.  Indent
+# the body of the playbook.
+-
+
+  hosts: all
+  ###########
+  # Playbook attribute: hosts
+  # Required: yes
+  # Description:
+  #   The name of a host or group of hosts that this playbook should apply to.
+  #
+  ## Example values:
+  #   hosts: all -- applies to all hosts
+  #   hosts: hostname -- apply ONLY to the host 'hostname'
+  #   hosts: groupname -- apply to all hosts in groupname
+  #   hosts: group1,group2 -- apply to hosts in group1 & group2
+  #   hosts: group1,host1 -- mix and match hosts
+  #   hosts: *.mars.nasa.gov wildcard matches work as expected
+  #
+  ## Using a variable value for 'hosts'
+  #
+  # You can, in fact, set hosts to a variable, for example:
+  #
+  #   hosts: “{{ groups }}”-- apply to all hosts specified in the variable groups
+  #
+  # This is handy for testing playbooks, running the same playbook against a
+  # staging environment before running it against production, occasional
+  # maintenance tasks, and other cases where you want to run the playbook
+  # against just a few systems rather than a whole group.
+  #
+  # If you set hosts as shown above, then you can specify which hosts to
+  # apply the playbook to on each run as so:
+  #
+  #   ansible-playbook playbook.yml --extra-vars="groups=staging"
+  #
+  # Use --extra-vars to set variable groups to any combination of groups, hostnames,
+  # or wildcards just like the examples in the previous section.
+  #
+
+  become: True
+  ###########
+  # Playbook attribute: become
+  # Default: False
+  # Required: no
+  # Description:
+  #   If True, use sudo as default to run this playbook, just like passing the
+  #   -b flag to ansible or ansible-playbook.
+
+  user: remoteuser
+  ###########
+  # Playbook attribute:  user
+  # Default: "root'
+  # Required: no
+  # Description
+  #   Remote user to execute the playbook as
+
+  ###########
+  # Playbook attribute: vars
+  # Default: none
+  # Required: no
+  # Description:
+  # Set configuration variables passed to templates & included playbooks
+  # and handlers.  See below for examples.
+  # Tree-like structures work as expected, but be careful to surround
+  # the variable name with {{ }} when using.  Additionally if the variable is the first thing that is called              
+  # as an argument for an ansible module parameter. Then you need to surround the curly braces with 
+  # double quotes. 
+  # For example:
+vars:
+  resource_group: dev-ops-one
+  session: testuser
+tasks:
+  - name: Azure deployment with variables
+    Azure_rm_deployment:
+         State: present
+	 Resource_group_name: “{{ resource_group }}”
+	 Template_link: https://github.com/{{ session }}/
+    #
+    # For this example, “{{ resource_group }}” and {{ session }} are both usable
+    #  variables.
+
+    ########
+    # The following works in Ansible 0.5 and later, and will set $config_path
+    # "/etc/ntpd.conf" as expected.
+    #
+    # In older versions, $config_path will be set to the string "/etc/$config"
+    #
+    config: ntpd.conf
+    config_path: /etc/$config
+
+    ########
+    # Variables can be set conditionally. This is actually a tiny snippet
+    # of Python that will get filled in and evaluated during playbook execution.
+    # This expressioun should always evaluate to True or False.
+    #
+    # In this playbook, this will always evaluate to False, because variable 'color'
+    #  is set to 'brown' .
+    #
+    # When ansible interprets the following, it will first expand {{ color }} to
+    # 'brown' and then evaluate 'brown' == 'blue' as a Python expression.
+    when: color == "blue"
+
+    #####
+    # Builtin Variables
+    #
+    # Everything that the 'setup' module provides can be used in the
+    # vars section.  Ansible native, Facter, and Ohai facts can all be
+    # used.
+    #
+    # Run the setup module to see what else you can use:
+    # ansible -m setup -i /path/to/hosts.ini host1
+    main_vhost: "{{ ansible_fqdn }}"
+    public_ip:  "{{ ansible_eth0.ipv4.address }}"
+ 
+
+
+  ##########
+  # Playbook attribute: vars_files
+  # Required: no
+  # Description:
+  #   Specifies a list of YAML files to load variables from.
+  #
+  #   Always evaluated after the 'vars' section, no matter which section
+  #   occurs first in the playbook.  Examples are below.
+  #
+  #   Example YAML for a file to be included by vars_files:
+  #---
+     monitored_by: phobos.mars.nasa.gov
+     fish_sticks: "good with custard"
+  #   # (END OF DOCUMENT)
+  #
+  #   A 'vars' YAML file represents a list of variables. Don't use playbook
+  #   YAML for a 'vars' file.
+  #
+  #   Remove the indentation & comments of course, the '---' should be at
+  #   the left margin in the variables file.
+  #
+  vars_files:
+    # Include a file from this absolute path
+    - /srv/ansible/vars/vars_file.yml
+
+    # Include a file from a path relative to this playbook
+    - vars/vars_file.yml
+
+    # By the way, variables set in 'vars' are available here.
+    - vars/$hostname.yml
+
+    # It's also possible to pass an array of files, in which case
+    # Ansible will loop over the array and include the first file that
+    # exists.  If none exist, ansible-playbook will halt with an error.
+    #
+    # An excellent way to handle platform-specific differences.
+    - [ vars/$platform.yml, vars/default.yml ]
+
+    # Files in vars_files process in order, so later files can
+    # provide more specific configuration:
+    - [ vars/$host.yml ]
+
+    # Hey, but if you're doing host-specific variable files, you might
+    # consider setting the variable for a group in your hosts.ini and
+    # adding your host to that group. Just a thought.
+
+
+  ##########
+  # Playbook attribute: vars_prompt
+  # Required: no
+  # Description:
+  #   A list of variables that must be manually input each time this playbook
+  #   runs.  Used for sensitive data and also things like release numbers that
+  #   vary on each deployment.  Ansible always prompts for this value, even
+  #   if it's passed in through the inventory or --extra-vars.
+  #
+  #   Ansible will always prompt for the variables in vars_prompt, even if they're passed in via
+  #   --extra-vars or group variables.
+  #
+  vars_prompt:
+    passphrase: "Please enter the passphrase for the SSL certificate"
+	#  
+    # Data should not be sensitive, but something that should vary on each playbook run
+	# for passphrases and certificates use ansible vault or Tower database for encryption 
+    release_version: "Please enter a release tag"
+
+  ##########
+  # Playbook attribute: tasks
+  # Required: yes
+  # Description:
+  # A list of tasks to perform in this playbook.
+  tasks:
+    ##########
+    # The simplest task
+    # Each task must have a name & module name you will be using
+    - name: Check that the server's alive
+      ping:
+
+    # Ansible modules do the work!
+    - name: Enforce permissions on /tmp/secret
+      file:
+		  path: /tmp/secret 
+		  mode: 0600 
+		  owner: root 
+		  group: root
+    #
+    # Test your parameters using:
+    #   ansible -m <module> -a "<module parameters>"
+    #
+    # Documentation for the stock modules:
+    # http://ansible.github.com/modules.html
+
+    ##########
+    # Use variables in the task!
+    #
+    # Variables expand in both name and action
+    - name: Paint the server {{ color }}
+      module: command echo {{ color }}
+
+
+    ##########
+    # Trigger handlers when things change!
+    #
+    # Ansible detects when an action changes something.  For example, the
+    # file permissions change, a file's content changed, a package was
+    # just installed (or removed), a user was created (or removed).  When 
+    # a change is detected, Ansible can optionally notify one or more
+    # Handlers.  Handlers can take any action that a Task can. Most
+    # commonly they are used to restart a service when its configuration
+    # changes. See "Handlers" below for more about handlers.
+    #
+    # Handlers are called by their name, which is very human friendly.
+
+    # This will call the "Restart Apache" handler whenever 'copy' alters
+    # the remote httpd.conf.
+    - name: Update the Apache config
+      copy:
+		    src=httpd.conf 
+		    dest=/etc/httpd/httpd.conf
+	    notify: Restart Apache
+
+    # Here's how to specify more than one handler
+    - name: Update our app's configuration
+      copy:
+		    src=myapp.conf
+		    dest=/etc/myapp/production.conf
+      notify:
+        - Restart Apache
+        - Restart Redis
+
+    ##########
+    # Include tasks from another file!
+    #
+    # Ansible can include a list of tasks from another file.
+
+
+    # In this example varaible user will be 'mosh'
+    #  and variable color will be 'mauve' inside new_user.yml
+    - include: tasks/new_user.yml user=mosh color=mauve
+
+    # Variables expand before the include is evaluated:
+    - include: tasks/new_user.yml user=chris color={{ color }}
+
+
+    ##########
+    # Run a task on each thing in a list!
+    #
+    # Ansible provides a simple loop facility. If 'loop' is provided for
+    # a task, then the task will be run once for each item in the 'loop'
+    # list.  {{ item }} changes each time through the loop.
+	# if loop_control is specified you are able to change the the varaible name for {{ item }} to anything
+    - name: Create a file named in /tmp
+      yum:
+        name: "{{ yum_package }}"
+        state: latest
+      loop:
+        - httpd
+        - python3
+	  loop_control:
+		loop_var: yum_package
+
+    ##########
+    # Choose between files or templates!
+    #
+    # Sometimes you want to choose between local files depending on the
+    # value of the variable.  first_found plugin checks for each file
+    # and, if the file exists calls the action with item={{filename}}.
+    #
+    # Mostly useful for 'template' and 'copy' actions.  Only examines local
+    # files.
+    #
+
+    - name: Template a file
+      template:
+        src: "{{ lookup('first_found', findme)}}"
+        dest: /etc/myapp/foo.conf
+	    vars:
+	      findme:
+           - templates/myapp/${ansible_distribution}.conf
+	         - templates/myapp/default.conf
+    ##########
+    # Conditionally execute tasks!
+    #
+    # Sometimes you only want to run an action when a under certain conditions.
+    # In Ansible use 'when' as a Python expression and will only run the
+    # action when the expression evaluates to True.
+    # For conditional statements(e.g. failed_when, when, that, assert)  like the one below, you do not need to 
+    # add brackets around the variables
+    # 
+    #
+    # If you're trying to run an task only when a value changes,
+    # consider rewriting the task as a handler and using 'notify' 
+    - name: "shutdown all ubuntu"
+      action: command /sbin/shutdown -t now
+      when: ansible_distribution == 'CentOS'
+
+    ##########
+    # Notify handlers when things change!
+    # 
+    # Each task can optionally have one or more handlers that get called
+    # when the task changes something -- creates a user, updates a file,
+    # etc.
+    #
+    # Handlers have human-readable names and are defined in the 'handlers'
+    #  section of a playbook.  See below for the definitions of 'Restart apache'
+    # when Ansible sees that a play changes something on the node it is managing and 
+    # a handler is defined.  It will run the handler once after all tasks complete in a play
+
+    tasks:
+        - name: update apache config
+          file:
+            src: apache.conf 
+            dest: /etc/apache/apache.conf
+          notify: restart apache
+    handlers:
+        - name: restart apache
+          service:
+            name: httpd
+            state: restarted
+
+    ##########
+    # Run things as other users!
+    #
+    # Each task has an optional 'become', 'become_user', and 'become_method' flag to indicate which
+    # user a task should run as and whether or not to escalate privileges 
+    - name: checkout repo
+      git: 
+          repo: https://github.com/some/repo.git 
+          version: master 
+          dest: some_destination
+      become: yes
+      become_user: some_user
+      become_method: sudo
+
+    ##########
+    # Run things locally!
+    #
+    # Each task also has a 'connection' setting to control whether a local
+    # or remote connection is used. 'paramiko' is assumed by the command line tools.
+    #
+    # This can also be set at the top level of the playbook.
+    - name: create tempfile
+      file: 
+        src: /myfile/location
+        dest: /new/file/location
+      connection: local
