@@ -34,7 +34,7 @@
 # Notice the minus on the line below -- this starts the playbook's record
 # in the YAML document. Only one playbook is allowed per YAML file.  Indent
 # the body of the playbook.
--
+- 
 
   hosts: all
   ###########
@@ -100,15 +100,15 @@
   # as an argument for an ansible module parameter. Then you need to surround the curly braces with 
   # double quotes. 
   # For example:
-vars:
-  resource_group: dev-ops-one
-  session: testuser
-tasks:
-  - name: Azure deployment with variables
-    Azure_rm_deployment:
-         State: present
-	 Resource_group_name: “{{ resource_group }}”
-	 Template_link: https://github.com/{{ session }}/
+  vars:
+    resource_group: dev-ops-one
+    session: testuser
+  tasks:
+    - name: Azure deployment with variables
+      Azure_rm_deployment:
+        state: present
+        resource_group_name: “{{ resource_group }}”
+        template_link: https://github.com/{{ session }}/
     #
     # For this example, “{{ resource_group }}” and {{ session }} are both usable
     #  variables.
@@ -119,8 +119,8 @@ tasks:
     #
     # In older versions, $config_path will be set to the string "/etc/$config"
     #
-    config: ntpd.conf
-    config_path: /etc/$config
+  config: ntpd.conf
+  config_path: /etc/$config
 
     ########
     # Variables can be set conditionally. This is actually a tiny snippet
@@ -132,7 +132,7 @@ tasks:
     #
     # When ansible interprets the following, it will first expand {{ color }} to
     # 'brown' and then evaluate 'brown' == 'blue' as a Python expression.
-    when: color == "blue"
+  when: color == "blue"
 
     #####
     # Builtin Variables
@@ -143,8 +143,8 @@ tasks:
     #
     # Run the setup module to see what else you can use:
     # ansible -m setup -i /path/to/hosts.ini host1
-    main_vhost: "{{ ansible_fqdn }}"
-    public_ip:  "{{ ansible_eth0.ipv4.address }}"
+  main_vhost: "{{ ansible_fqdn }}"
+  public_ip:  "{{ ansible_eth0.ipv4.address }}"
  
 
 
@@ -159,8 +159,8 @@ tasks:
   #
   #   Example YAML for a file to be included by vars_files:
   #---
-     monitored_by: phobos.mars.nasa.gov
-     fish_sticks: "good with custard"
+  monitored_by: phobos.mars.nasa.gov
+  fish_sticks: "good with custard"
   #   # (END OF DOCUMENT)
   #
   #   A 'vars' YAML file represents a list of variables. Don't use playbook
@@ -209,30 +209,30 @@ tasks:
   #
   vars_prompt:
     passphrase: "Please enter the passphrase for the SSL certificate"
-	#  
+  #  
     # Data should not be sensitive, but something that should vary on each playbook run
-	# for passphrases and certificates use ansible vault or Tower database for encryption 
-    release_version: "Please enter a release tag"
+  # for passphrases and certificates use ansible vault or Tower database for encryption 
+  release_version: "Please enter a release tag"
 
   ##########
   # Playbook attribute: tasks
   # Required: yes
   # Description:
   # A list of tasks to perform in this playbook.
-  tasks:
+  # tasks:
     ##########
     # The simplest task
     # Each task must have a name & module name you will be using
-    - name: Check that the server's alive
-      ping:
+- name: Check that the server's alive
+  ping:
 
     # Ansible modules do the work!
-    - name: Enforce permissions on /tmp/secret
-      file:
-		  path: /tmp/secret 
-		  mode: 0600 
-		  owner: root 
-		  group: root
+- name: Enforce permissions on /tmp/secret
+  file:
+    path: /tmp/secret 
+    mode: 0600 
+    owner: root 
+    group: root
     #
     # Test your parameters using:
     #   ansible -m <module> -a "<module parameters>"
@@ -244,8 +244,8 @@ tasks:
     # Use variables in the task!
     #
     # Variables expand in both name and action
-    - name: Paint the server {{ color }}
-      module: command echo {{ color }}
+- name: Paint the server {{ color }}
+  module: command echo {{ color }}
 
 
     ##########
@@ -263,20 +263,20 @@ tasks:
 
     # This will call the "Restart Apache" handler whenever 'copy' alters
     # the remote httpd.conf.
-    - name: Update the Apache config
-      copy:
-		    src=httpd.conf 
-		    dest=/etc/httpd/httpd.conf
-	    notify: Restart Apache
+- name: Update the Apache config
+  copy:
+    src: httpd.conf 
+    dest: /etc/httpd/httpd.conf
+  notify: Restart Apache
 
-    # Here's how to specify more than one handler
-    - name: Update our app's configuration
-      copy:
-		    src=myapp.conf
-		    dest=/etc/myapp/production.conf
-      notify:
-        - Restart Apache
-        - Restart Redis
+# Here's how to specify more than one handler
+- name: Update our app's configuration
+  copy:
+    src: myapp.conf
+    dest: /etc/myapp/production.conf
+  notify:
+    - Restart Apache
+    - Restart Redis
 
     ##########
     # Include tasks from another file!
@@ -286,10 +286,10 @@ tasks:
 
     # In this example varaible user will be 'mosh'
     #  and variable color will be 'mauve' inside new_user.yml
-    - include: tasks/new_user.yml user=mosh color=mauve
+- include: tasks/new_user.yml user=mosh color=mauve
 
     # Variables expand before the include is evaluated:
-    - include: tasks/new_user.yml user=chris color={{ color }}
+- include: tasks/new_user.yml user=chris color={{ color }}
 
 
     ##########
@@ -298,16 +298,16 @@ tasks:
     # Ansible provides a simple loop facility. If 'loop' is provided for
     # a task, then the task will be run once for each item in the 'loop'
     # list.  {{ item }} changes each time through the loop.
-	# if loop_control is specified you are able to change the the varaible name for {{ item }} to anything
-    - name: Create a file named in /tmp
-      yum:
-        name: "{{ yum_package }}"
-        state: latest
-      loop:
-        - httpd
-        - python3
-	  loop_control:
-		loop_var: yum_package
+    # if loop_control is specified you are able to change the the varaible name for {{ item }} to anything
+- name: Create a file named in /tmp
+  yum:
+    name: "{{ yum_package }}"
+    state: latest
+  loop:
+    - httpd
+    - python3
+  loop_control:
+  loop_var: yum_package
 
     ##########
     # Choose between files or templates!
@@ -320,15 +320,15 @@ tasks:
     # files.
     #
 
-    - name: Template a file
-      template:
-        src: "{{ lookup('first_found', findme)}}"
-        dest: /etc/myapp/foo.conf
-	    vars:
-	      findme:
-           - templates/myapp/${ansible_distribution}.conf
-	         - templates/myapp/default.conf
-    ##########
+- name: Template a file
+  template:
+    src: "{{ lookup('first_found', findme)}}"
+    dest: /etc/myapp/foo.conf
+  vars:
+    findme:
+    - templates/myapp/${ansible_distribution}.conf
+    - templates/myapp/default.conf
+  ##########
     # Conditionally execute tasks!
     #
     # Sometimes you only want to run an action when a under certain conditions.
@@ -340,9 +340,9 @@ tasks:
     #
     # If you're trying to run an task only when a value changes,
     # consider rewriting the task as a handler and using 'notify' 
-    - name: "shutdown all ubuntu"
-      action: command /sbin/shutdown -t now
-      when: ansible_distribution == 'CentOS'
+- name: "shutdown all ubuntu"
+  action: command /sbin/shutdown -t now
+  when: ansible_distribution == 'CentOS'
 
     ##########
     # Notify handlers when things change!
@@ -356,17 +356,17 @@ tasks:
     # when Ansible sees that a play changes something on the node it is managing and 
     # a handler is defined.  It will run the handler once after all tasks complete in a play
 
-    tasks:
-        - name: update apache config
-          file:
-            src: apache.conf 
-            dest: /etc/apache/apache.conf
-          notify: restart apache
-    handlers:
-        - name: restart apache
-          service:
-            name: httpd
-            state: restarted
+  tasks:
+    - name: update apache config
+      file:
+        src: apache.conf 
+        dest: /etc/apache/apache.conf
+      notify: restart apache
+  handlers:
+    - name: restart apache
+      service:
+        name: httpd
+        state: restarted
 
     ##########
     # Run things as other users!
